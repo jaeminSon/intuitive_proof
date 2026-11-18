@@ -1,0 +1,675 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>OpenAI’s Navier–Stokes Blow-up</title>
+<meta name="description" content="A plain-language, interactive explainer of OpenAI’s claimed finite-time blow-up for the forced 3D Navier–Stokes equations.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400..700&family=STIX+Two+Text:ital,wght@0,400..700;1,400..700&display=swap">
+<style>
+/* Layout: one 680px reading column; the interactive whirlpool breaks out to 980px as the page's single bold moment. */
+:root {
+  --paper: #F1F4F6;
+  --surface: #FFFFFF;
+  --ink: #13202B;
+  --muted: #52616E;
+  --rule: #D3DCE2;
+  --flow: #0E6570;
+  --on-flow: #FFFFFF;
+  --core: #D2491F;
+  --core-ink: #A93A14;
+  --ripple: #5A4EC2;
+  --calm: #8795A1;
+  --knob: #FFFFFF;
+  --font-display: "Archivo", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-math: "STIX Two Text", "Cambria Math", Cambria, "Times New Roman", serif;
+  --measure: 680px;
+  --wide: 980px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0D151C; --surface: #14202A; --ink: #E3EAF0; --muted: #9AA8B4; --rule: #273641;
+    --flow: #52C4CA; --on-flow: #0D151C; --core: #F07446; --core-ink: #F59877;
+    --ripple: #A497F3; --calm: #6E7D89; --knob: #FFFFFF;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0D151C; --surface: #14202A; --ink: #E3EAF0; --muted: #9AA8B4; --rule: #273641;
+  --flow: #52C4CA; --on-flow: #0D151C; --core: #F07446; --core-ink: #F59877;
+  --ripple: #A497F3; --calm: #6E7D89; --knob: #FFFFFF;
+  color-scheme: dark;
+}
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 17px;
+  line-height: 1.65;
+  padding-block: 0;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+h1, h2, h3, p, ul, ol, figure { margin: 0; }
+a { color: var(--flow); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+a:hover { text-decoration-thickness: 2px; }
+:focus-visible { outline: 2px solid var(--flow); outline-offset: 3px; border-radius: 4px; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+.m { font-family: var(--font-math); font-size: 1.1em; line-height: 1; }
+sup, sub { line-height: 0; }
+.m sup { font-size: .68em; }
+
+main { display: flex; flex-direction: column; gap: 64px; padding-block: 56px 40px; }
+.read { width: 100%; max-width: var(--measure); margin-inline: auto; display: flex; flex-direction: column; gap: 16px; }
+
+.hero { gap: 18px; }
+.eyebrow { font-size: .78rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--flow); }
+h1 { font-family: var(--font-display); font-stretch: 80%; font-weight: 750; font-size: clamp(2.3rem, 7vw, 3.7rem); line-height: 1.02; letter-spacing: -.012em; text-wrap: balance; }
+.lede { font-size: 1.15rem; line-height: 1.6; }
+.meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: .85rem; color: var(--muted); }
+.flag { display: inline-block; padding: 2px 10px; border-radius: 999px; font-weight: 600; font-size: .78rem; color: var(--core-ink); background: color-mix(in srgb, var(--core) 14%, transparent); }
+
+h2 { font-family: var(--font-display); font-stretch: 86%; font-weight: 700; font-size: clamp(1.55rem, 3.6vw, 1.95rem); line-height: 1.15; letter-spacing: -.006em; text-wrap: balance; }
+h3 { font-family: var(--font-display); font-stretch: 92%; font-weight: 650; font-size: 1.15rem; line-height: 1.25; text-wrap: balance; }
+
+.lab { width: 100%; max-width: var(--wide); margin-inline: auto; background: var(--surface); border: 1px solid var(--rule); border-radius: 16px; padding: clamp(16px, 3vw, 32px); display: flex; flex-direction: column; gap: 20px; }
+.lab-grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: clamp(20px, 4vw, 40px); align-items: center; }
+.viz svg { display: block; width: 100%; max-width: 430px; height: auto; margin-inline: auto; }
+.panel { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.legend { list-style: none; padding: 0; display: grid; gap: 12px; }
+.legend li { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 12px; align-items: start; }
+.lg-name { display: block; font-weight: 600; font-size: .95rem; line-height: 1.3; }
+.lg-desc { display: block; font-size: .85rem; color: var(--muted); line-height: 1.4; }
+.sw { display: block; width: 16px; height: 16px; border-radius: 50%; margin-top: 2px; }
+.sw-core { background: color-mix(in srgb, var(--core) 35%, transparent); border: 1.5px solid var(--core); }
+.sw-ring { background: color-mix(in srgb, var(--ripple) 14%, transparent); border: 2px dashed var(--ripple); }
+.sw-hot { background: color-mix(in srgb, var(--core) 45%, transparent); border: 2px solid var(--core); }
+.sw-calm { background: color-mix(in srgb, var(--calm) 18%, transparent); border: 1.5px solid var(--calm); }
+.toggle-row { display: flex; flex-direction: column; gap: 6px; }
+.switch { position: relative; display: inline-flex; align-items: center; gap: 10px; width: fit-content; cursor: pointer; font-weight: 600; font-size: .95rem; }
+.switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.track { position: relative; flex: none; width: 40px; height: 22px; border-radius: 11px; background: var(--rule); transition: background .2s; }
+.knob { position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--knob); transition: transform .2s; }
+.switch input:checked + .track { background: var(--ripple); }
+.switch input:checked + .track .knob { transform: translateX(18px); }
+.switch input:focus-visible + .track { outline: 2px solid var(--flow); outline-offset: 3px; }
+.note { font-size: .85rem; color: var(--muted); line-height: 1.45; }
+.readouts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.tile { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 10px 12px; background: var(--paper); border: 1px solid var(--rule); border-radius: 10px; }
+.tile .k { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: .75rem; color: var(--muted); }
+.tile .v { font-family: var(--font-display); font-stretch: 90%; font-weight: 700; font-size: 1.5rem; line-height: 1.2; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile .s { font-size: .75rem; color: var(--muted); }
+.pill { display: inline-block; padding: 0 8px; border-radius: 999px; font-size: .7rem; font-weight: 600; line-height: 1.6; }
+.pill.ok { color: var(--flow); background: color-mix(in srgb, var(--flow) 15%, transparent); }
+.pill.bad { color: var(--core-ink); background: color-mix(in srgb, var(--core) 16%, transparent); }
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; padding-top: 16px; border-top: 1px solid var(--rule); }
+.btn { min-width: 9.5em; padding: 11px 18px; border: 0; border-radius: 999px; cursor: pointer; font: 600 .95rem/1 var(--font-body); color: var(--on-flow); background: var(--flow); }
+.btn:hover { filter: brightness(1.08); }
+.controls input[type=range] { flex: 1 1 220px; min-width: 0; accent-color: var(--flow); }
+.controls output { min-width: 10em; text-align: right; font-variant-numeric: tabular-nums; font-size: .9rem; font-weight: 600; }
+.lab figcaption { font-size: .8rem; color: var(--muted); line-height: 1.5; }
+
+.sv-calm { fill: var(--calm); fill-opacity: .12; stroke: var(--calm); stroke-opacity: .55; stroke-width: 1; }
+.sv-arc { fill: none; stroke: var(--calm); stroke-width: 2; stroke-linecap: round; stroke-opacity: .75; }
+.sv-band { fill: none; stroke: var(--ripple); stroke-opacity: .14; stroke-width: 36; }
+.sv-ring { fill: none; stroke: var(--ripple); stroke-width: 2; stroke-dasharray: 7 6; }
+.sv-hot { fill: none; stroke: var(--core); stroke-opacity: .3; stroke-width: 36; }
+.sv-core { fill: var(--core); fill-opacity: .16; stroke: var(--core); stroke-width: 1.2; }
+.sv-arm { fill: none; stroke: var(--core-ink); stroke-width: 2.4; stroke-linecap: round; }
+.off { display: none; }
+@keyframes drift { to { stroke-dashoffset: -26; } }
+@keyframes pulse { 0%, 100% { opacity: .6; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: no-preference) {
+  .ring-a { animation: drift 1.6s linear infinite; }
+  .ring-b { animation: drift 1.6s linear infinite reverse; }
+  .sv-hot { animation: pulse 1.1s ease-in-out infinite; }
+}
+
+.eq-box { display: flex; flex-direction: column; gap: 18px; overflow-x: auto; padding: 20px clamp(14px, 3vw, 24px); background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; }
+.eq { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px 12px; }
+.eq-2 { gap: 10px 36px; padding-top: 14px; border-top: 1px dashed var(--rule); }
+.t { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.x { font-size: 1.65rem; line-height: 1.2; white-space: nowrap; }
+.o { font-size: 1.65rem; line-height: 1.2; color: var(--muted); }
+.l { max-width: 8.5em; font-size: .74rem; line-height: 1.3; color: var(--muted); text-align: center; }
+.nl .x { color: var(--ripple); }
+.push .x { color: var(--core-ink); }
+.claim { display: flex; flex-direction: column; gap: 6px; padding: 18px clamp(16px, 3vw, 24px); background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; }
+.claim-k { font-size: .75rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--flow); }
+
+.steps { list-style: none; padding: 0; display: flex; flex-direction: column; }
+.step { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 18px; padding-block: 22px; border-top: 1px solid var(--rule); }
+.step:last-child { border-bottom: 1px solid var(--rule); }
+.step-mark { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.num { font-size: .72rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--flow); white-space: nowrap; }
+.icon { display: block; width: 56px; height: 56px; }
+.step-body { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.ref { font-size: .8rem; color: var(--muted); }
+.i-flow { fill: none; stroke: var(--flow); stroke-width: 2; stroke-linecap: round; }
+.i-disc { fill: var(--flow); fill-opacity: .12; stroke: var(--flow); stroke-width: 1.5; }
+.i-core { fill: none; stroke: var(--core); stroke-width: 2; stroke-linecap: round; }
+.i-dot { fill: var(--core); }
+.i-hotring { fill: none; stroke: var(--core); stroke-opacity: .45; stroke-width: 6; }
+.i-wavy { fill: none; stroke: var(--ripple); stroke-width: 2; stroke-linejoin: round; }
+.i-bar { fill: var(--core); }
+.i-base { fill: none; stroke: var(--muted); stroke-width: 1.2; }
+.m-flow { fill: var(--flow); }
+.m-core { fill: var(--core); }
+
+.table-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th, td { padding: 11px 16px; text-align: left; white-space: nowrap; border-bottom: 1px solid var(--rule); }
+tr:last-child td { border-bottom: 0; }
+th { font-size: .72rem; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+th .m { text-transform: none; letter-spacing: 0; }
+td.f .m { font-size: 1.2rem; }
+td.up { color: var(--core-ink); font-weight: 600; }
+.calc { overflow-x: auto; font-size: .95rem; }
+.small { font-size: .88rem; color: var(--muted); }
+
+.means { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.mcol { display: flex; flex-direction: column; gap: 10px; min-width: 0; padding: 18px 20px; background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; }
+.mcol ul { display: flex; flex-direction: column; gap: 8px; padding-left: 1.1em; font-size: .95rem; }
+
+.timeline { list-style: none; display: flex; flex-direction: column; gap: 20px; margin-left: 6px; padding: 0; border-left: 2px solid var(--rule); }
+.timeline li { position: relative; display: flex; flex-direction: column; gap: 2px; padding-left: 22px; }
+.timeline li::before { content: ""; position: absolute; left: -7px; top: .35em; width: 12px; height: 12px; border-radius: 50%; background: var(--paper); border: 2px solid var(--flow); }
+.timeline li.now::before { background: var(--flow); }
+.timeline time { font-size: .78rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--flow); }
+.timeline p { font-size: .97rem; }
+
+.sources { display: flex; flex-direction: column; gap: 8px; padding-left: 1.1em; font-size: .92rem; }
+.foot { width: 100%; max-width: var(--measure); margin-inline: auto; padding-block: 22px 48px; border-top: 1px solid var(--rule); font-size: .8rem; color: var(--muted); }
+
+.layers { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 30px; }
+.layer { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.layer-k { font-size: .72rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--flow); }
+.layer > p:not(.layer-k) { font-size: .95rem; }
+.fx { display: flex; flex-direction: column; gap: 8px; overflow-x: auto; padding: 14px clamp(14px, 3vw, 20px); background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; font-family: var(--font-math); font-size: 1.04rem; line-height: 1.6; }
+.fx-row { display: flex; align-items: baseline; justify-content: space-between; gap: 24px; white-space: nowrap; }
+.fx-row > .eqn { flex: none; font-family: var(--font-body); font-size: .72rem; color: var(--muted); }
+.fx .tx { font-family: var(--font-body); font-size: .85rem; color: var(--muted); }
+.fx-row > span:first-child { white-space: normal; min-width: 0; }
+.q { display: inline-block; white-space: nowrap; margin-right: .9em; }
+.q.qj { margin-right: .3em; }
+.fx sub, .fx sup { font-size: .68em; }
+.fx sup sub, .fx sub sub, .fx sub sup, .m sup sub { font-size: .85em; }
+.claim .fx { background: var(--paper); }
+.ss { display: inline-flex; flex-direction: column; vertical-align: middle; margin-left: 1px; font-size: .62em; line-height: 1.05; }
+.ss > sup, .ss > sub { font-size: inherit; line-height: inherit; vertical-align: baseline; }
+.zones { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+.zone { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 12px; align-items: start; }
+.zone-body { display: flex; flex-direction: column; gap: 8px; min-width: 0; font-size: .95rem; }
+.notes { display: flex; flex-direction: column; gap: 6px; padding-left: 1.1em; font-size: .9rem; color: var(--muted); }
+
+@media (max-width: 760px) {
+  .lab-grid { grid-template-columns: minmax(0, 1fr); }
+  .viz svg { max-width: 340px; }
+}
+@media (max-width: 480px) {
+  body { font-size: 16px; }
+  .step { grid-template-columns: 48px minmax(0, 1fr); gap: 14px; }
+  .icon { width: 44px; height: 44px; }
+  .controls output { min-width: 0; text-align: left; }
+  .fx { font-size: .98rem; }
+  .fx-row { flex-direction: column; align-items: flex-start; gap: 0; }
+  .fx-row > .eqn { order: -1; }
+}
+</style>
+</head>
+<body>
+<svg class="defs" aria-hidden="true" focusable="false">
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="3.6" markerHeight="3.6" orient="auto-start-reverse"><path d="M1 1L9 5L1 9z" class="m-flow"/></marker>
+    <marker id="ahc" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="3.6" markerHeight="3.6" orient="auto-start-reverse"><path d="M1 1L9 5L1 9z" class="m-core"/></marker>
+  </defs>
+</svg>
+
+<main>
+  <header class="read hero">
+    <p class="eyebrow">OpenAI’s Navier–Stokes paper in plain terms</p>
+    <h1>A whirlpool that spins up to infinite speed</h1>
+    <p class="lede">In September 2026 OpenAI posted a 166-page proof about the equations of fluid flow. It builds a swirling flow that starts at rest, gets a smooth push in a limited region for a limited time, and reaches infinite speed at a set moment while its total energy stays finite. Mathematicians call this a blow-up. Whether one can happen is the question behind the Navier–Stokes Millennium Prize problem.</p>
+    <p class="meta"><a href="https://cdn.openai.com/pdf/32d9f210-8b73-45e0-91bc-82a30aef8a9a/navier-stokes.pdf">Finite time blowup for Navier–Stokes</a><span aria-hidden="true">·</span><span>166 pages</span><span aria-hidden="true">·</span><span>announced 8 Sep 2026</span></p>
+  </header>
+
+  <figure class="lab" aria-labelledby="lab-cap">
+    <div class="lab-grid">
+      <div class="viz">
+        <svg id="whirl" viewBox="0 0 320 320" role="img" aria-labelledby="whirl-t whirl-d">
+          <title id="whirl-t">Collapsing whirlpool seen from above</title>
+          <desc id="whirl-d">An orange core with three spiral arms sits inside a violet ring of ripples, inside a grey disc of calm swirling fluid. As time runs out, the core and the ring shrink toward the centre and spin faster, while the calm outside keeps its size.</desc>
+          <circle cx="160" cy="160" r="150" class="sv-calm"/>
+          <g id="calm-arcs" transform="translate(160 160)">
+            <path class="sv-arc" d="M128 0A128 128 0 0 1 98.05 82.28"/>
+            <path class="sv-arc" d="M128 0A128 128 0 0 1 98.05 82.28" transform="rotate(120)"/>
+            <path class="sv-arc" d="M128 0A128 128 0 0 1 98.05 82.28" transform="rotate(240)"/>
+            <path class="sv-arc" d="M142 0A142 142 0 0 1 122.98 71" transform="rotate(60)"/>
+            <path class="sv-arc" d="M142 0A142 142 0 0 1 122.98 71" transform="rotate(180)"/>
+            <path class="sv-arc" d="M142 0A142 142 0 0 1 122.98 71" transform="rotate(300)"/>
+          </g>
+          <g transform="translate(160 160)">
+            <g id="sys">
+              <g id="ripples">
+                <circle r="92" class="sv-band"/>
+                <circle r="106" class="sv-ring ring-a" vector-effect="non-scaling-stroke"/>
+                <circle r="92" class="sv-ring ring-b" vector-effect="non-scaling-stroke"/>
+                <circle r="78" class="sv-ring ring-a" vector-effect="non-scaling-stroke"/>
+              </g>
+              <circle id="hot" r="92" class="sv-hot off"/>
+              <circle id="core" r="62" class="sv-core" vector-effect="non-scaling-stroke"/>
+              <g id="spin">
+                <path class="sv-arm" d="M0 -54C34 -50 38 6 9 8" vector-effect="non-scaling-stroke"/>
+                <path class="sv-arm" d="M0 -54C34 -50 38 6 9 8" transform="rotate(120)" vector-effect="non-scaling-stroke"/>
+                <path class="sv-arm" d="M0 -54C34 -50 38 6 9 8" transform="rotate(240)" vector-effect="non-scaling-stroke"/>
+              </g>
+            </g>
+          </g>
+        </svg>
+      </div>
+      <div class="panel">
+        <ul class="legend">
+          <li><span class="sw sw-core" aria-hidden="true"></span><div><span class="lg-name">Core</span><span class="lg-desc">Shrinks and spins faster</span></div></li>
+          <li><span class="sw sw-ring" id="sw-ring" aria-hidden="true"></span><div><span class="lg-name" id="ring-name">Ripple ring</span><span class="lg-desc" id="ring-desc">Its ripples carry the momentum the core needs</span></div></li>
+          <li><span class="sw sw-calm" aria-hidden="true"></span><div><span class="lg-name">Calm outside</span><span class="lg-desc">A smooth swirl that needs no push</span></div></li>
+        </ul>
+        <div class="toggle-row">
+          <label class="switch" for="ripple-toggle">
+            <input type="checkbox" id="ripple-toggle" checked>
+            <span class="track" aria-hidden="true"><span class="knob"></span></span>
+            <span>Ripples</span>
+          </label>
+          <p class="note" id="toggle-note">Ripples on: they supply the missing push from inside the fluid, so the outside push stays smooth.</p>
+        </div>
+        <div class="readouts">
+          <div class="tile"><span class="k">Core width</span><span class="v" id="o-size">100%</span><span class="s"><span class="m">∝ √<i>τ</i></span></span></div>
+          <div class="tile"><span class="k">Top speed</span><span class="v" id="o-speed">1.0×</span><span class="s"><span class="m">∝ <i>τ</i><sup>−1/2−<i>h</i></sup></span></span></div>
+          <div class="tile"><span class="k">Energy in core</span><span class="v" id="o-energy">100%</span><span class="s"><span class="m">∝ <i>τ</i><sup>1/2−3<i>h</i></sup></span></span></div>
+          <div class="tile"><span class="k">Outside push needed <span class="pill ok" id="push-pill">smooth</span></span><span class="v" id="o-push">Bounded</span><span class="s" id="push-sub"><span class="m"><i>f</i> ∈ <i>C</i><span class="ss"><sup>∞</sup><sub><i>c</i></sub></span></span></span></div>
+        </div>
+      </div>
+    </div>
+    <div class="controls">
+      <button type="button" class="btn" id="play" aria-pressed="false">Play the collapse</button>
+      <label for="tleft" class="sr-only">Time left before blow-up</label>
+      <input type="range" id="tleft" min="0" max="100" step="0.5" value="0">
+      <output id="tl" for="tleft">Time left: 100%</output>
+    </div>
+    <figcaption id="lab-cap">Top view, schematic: the paper’s scaling laws with <span class="m"><i>τ</i> = 1 − <i>t</i></span> and <span class="m"><i>h</i> = 0.005</span>. Not a simulation.</figcaption>
+  </figure>
+
+  <section class="read" aria-labelledby="h-eq">
+    <h2 id="h-eq">The equation and the claim</h2>
+    <p>Navier–Stokes is Newton’s second law for a fluid that cannot be squeezed. Here <span class="m"><i>u</i></span> is the fluid’s velocity, <span class="m"><i>p</i></span> its pressure, <span class="m"><i>ν</i></span> its viscosity and <span class="m"><i>f</i></span> an outside push.</p>
+    <div class="eq-box" role="img" aria-label="Navier–Stokes with a force: time derivative of u, plus u dot grad u, minus nu times the Laplacian of u, plus grad p, equals f. The divergence of u is zero, and u is zero at time zero.">
+      <div class="eq">
+        <span class="t"><span class="x m">∂<sub><i>t</i></sub><i>u</i></span><span class="l">how the flow changes</span></span>
+        <span class="o m">+</span>
+        <span class="t nl"><span class="x m">(<i>u</i>·∇)<i>u</i></span><span class="l">the fluid carries itself along</span></span>
+        <span class="o m">−</span>
+        <span class="t"><span class="x m"><i>ν</i>Δ<i>u</i></span><span class="l">friction smooths it out</span></span>
+        <span class="o m">+</span>
+        <span class="t"><span class="x m">∇<i>p</i></span><span class="l">pressure</span></span>
+        <span class="o m">=</span>
+        <span class="t push"><span class="x m"><i>f</i></span><span class="l">outside push</span></span>
+      </div>
+      <div class="eq eq-2">
+        <span class="t"><span class="x m">∇·<i>u</i> = 0</span><span class="l">cannot be squeezed</span></span>
+        <span class="t"><span class="x m"><i>u</i>(<i>x</i>, 0) = 0</span><span class="l">starts at rest</span></span>
+      </div>
+    </div>
+    <p>The term <span class="m">(<i>u</i>·∇)<i>u</i></span> is the only nonlinear one. Almost all of the difficulty sits there, and it is also the term the paper’s ripples exploit.</p>
+    <div class="claim">
+      <p class="claim-k">Theorem 1.1 in words</p>
+      <p>For every viscosity <span class="m"><i>ν</i> &gt; 0</span> there is a smooth push <span class="m"><i>f</i></span>, acting in a bounded region for a bounded time, such that a fluid starting at rest reaches infinite speed at time <span class="m"><i>t</i> = 1</span> while its kinetic energy stays bounded. So with that push, no smooth solution with bounded energy can exist for all time.</p>
+    </div>
+  </section>
+
+  <section class="read" aria-labelledby="h-steps">
+    <h2 id="h-steps">How the paper builds it</h2>
+    <p>The proof works backwards. It chooses the flow first, then shows that the push this flow needs is smooth.</p>
+    <ol class="steps">
+      <li class="step">
+        <div class="step-mark">
+          <span class="num">Step 1</span>
+          <svg class="icon" viewBox="0 0 56 56" aria-hidden="true">
+            <ellipse class="i-disc" cx="28" cy="29" rx="21" ry="7"/>
+            <path class="i-flow" d="M3 29H12" marker-end="url(#ah)"/>
+            <path class="i-flow" d="M53 29H44" marker-end="url(#ah)"/>
+            <path class="i-core" d="M28 23V7" marker-end="url(#ahc)"/>
+            <path class="i-core" d="M28 35V50" marker-end="url(#ahc)"/>
+          </svg>
+        </div>
+        <div class="step-body">
+          <h3>Design the whirlpool first</h3>
+          <p>The paper writes down a spinning column in which fluid spirals inward toward the axis and shoots out along it, upward above a thin middle layer and downward below it. The shape stays the same as it shrinks, so the rate of collapse can be written down exactly.</p>
+          <p class="ref">In the paper: §2.1, §§4–5</p>
+        </div>
+      </li>
+      <li class="step">
+        <div class="step-mark">
+          <span class="num">Step 2</span>
+          <svg class="icon" viewBox="0 0 56 56" aria-hidden="true">
+            <circle class="i-hotring" cx="28" cy="28" r="13"/>
+            <circle class="i-dot" cx="28" cy="28" r="4.5"/>
+            <path class="i-core" d="M47 28H53M41.4 41.4L45.7 45.7M28 47V53M14.6 41.4L10.3 45.7M9 28H3M14.6 14.6L10.3 10.3M28 9V3M41.4 14.6L45.7 10.3"/>
+          </svg>
+        </div>
+        <div class="step-body">
+          <h3>Read off the push it needs</h3>
+          <p>Any flow you choose satisfies Navier–Stokes if you define the push <span class="m"><i>f</i></span> as whatever is left over in the equation. The catch is that the push must stay smooth. For the bare whirlpool, the leftover grows without limit in a ring around the core as <span class="m"><i>t</i></span> approaches 1, so it is not allowed.</p>
+          <p class="ref">In the paper: §2, §2.2, eq. (3.1)</p>
+        </div>
+      </li>
+      <li class="step">
+        <div class="step-mark">
+          <span class="num">Step 3</span>
+          <svg class="icon" viewBox="0 0 56 56" aria-hidden="true">
+            <path class="i-wavy" id="wavy" d="M45 28A17 17 0 1 1 45 27.99Z"/>
+            <circle class="i-dot" cx="28" cy="28" r="4.5"/>
+          </svg>
+        </div>
+        <div class="step-body">
+          <h3>Add ripples in the ring</h3>
+          <p>Small ring-shaped waves are placed where the leftover is too large. The whirlpool’s shear makes them grow, then viscosity damps them. Each ripple averages to zero, yet the momentum it carries does not, and that transport supplies exactly the push the ring was missing. In effect the fluid pushes itself. Two families of ripples cover the two directions of the missing push, and new ones are added at ever finer scales as blow-up nears.</p>
+          <p class="ref">In the paper: §2.2, §§6–7, Proposition 7.5</p>
+        </div>
+      </li>
+      <li class="step">
+        <div class="step-mark">
+          <span class="num">Step 4</span>
+          <svg class="icon" viewBox="0 0 56 56" aria-hidden="true">
+            <rect class="i-bar" x="6" y="10" width="8" height="38" rx="1.5"/>
+            <rect class="i-bar" x="18" y="24" width="8" height="24" rx="1.5" opacity=".75"/>
+            <rect class="i-bar" x="30" y="34" width="8" height="14" rx="1.5" opacity=".5"/>
+            <rect class="i-bar" x="42" y="42" width="8" height="6" rx="1.5" opacity=".3"/>
+            <path class="i-base" d="M3 48.5H53"/>
+          </svg>
+        </div>
+        <div class="step-body">
+          <h3>Repeat until only a smooth push is left</h3>
+          <p>Each round of corrections leaves a smaller error for the next round to cancel. Summed up, the leftover and all its derivatives fade to zero at the blow-up point. The flow is then cut off smoothly in space, and the calm swirl outside needs no push at all. What remains is a smooth push that can be continued past <span class="m"><i>t</i> = 1</span> and then switched off.</p>
+          <p class="ref">In the paper: §§8–10, Theorem 1.1</p>
+        </div>
+      </li>
+    </ol>
+  </section>
+
+  <section class="read" aria-labelledby="h-exact">
+    <h2 id="h-exact">The exact construction</h2>
+    <p>There is no closed-form formula for <span class="m"><i>u</i></span>. The paper builds it in layers and proves that each layer exists, and only some pieces are explicit. The force is then defined as whatever <span class="m"><i>u</i></span> leaves over in the equation. These are the definitions at viscosity 1, with the paper’s equation numbers.</p>
+    <ol class="layers">
+      <li class="layer">
+        <p class="layer-k">The definition</p>
+        <div class="fx">
+          <div class="fx-row"><span><span class="q"><i>u</i> = ∇×(<i>c</i>𝒜) + <i>c</i>ℬ<i>e</i><sub>θ</sub>,</span> <span class="q"><i>p</i> = <i>c</i><i>p</i><sub>loc</sub>,</span> <span class="q"><i>c</i>(<i>x</i>, <i>t</i>) = <i>χ</i><sub><i>x</i></sub>(<i>x</i>) <i>χ</i><sub><i>t</i></sub>(<i>t</i>)</span></span><span class="eqn">(10.4)</span></div>
+          <div class="fx-row"><span><span class="q">𝒜 = 𝒜<sub>0</sub> + Σ<sub><i>j</i>≥1</sub> <i>χ</i>(<i>a</i><sub><i>j</i></sub><i>q</i>) <i>A</i><sub><i>j</i></sub>,</span> <span class="q">ℬ<i>e</i><sub>θ</sub> = ℬ<sub>0</sub><i>e</i><sub>θ</sub> + Σ<sub><i>j</i>≥1</sub> <i>χ</i>(<i>a</i><sub><i>j</i></sub><i>q</i>) <i>B</i><sub><i>j</i></sub></span></span><span class="eqn">(9.21)</span></div>
+          <div class="fx-row"><span><span class="q">∇×𝒜<sub>0</sub> + ℬ<sub>0</sub><i>e</i><sub>θ</sub> = <i>u</i><sup>[0]</sup> (<i>q</i> ≪ 1),</span> <span class="q">∇×<i>A</i><sub><i>j</i></sub> + <i>B</i><sub><i>j</i></sub> = <i>u</i><sup>[<i>j</i>]</sup> − <i>u</i><sup>[<i>j</i>−1]</sup></span></span><span class="eqn">(9.15), (9.21)</span></div>
+          <div class="fx-row"><span><span class="q"><i>χ</i>(<i>σ</i>) = 1 (<i>σ</i> ≪ 1),</span> <span class="q"><i>a</i><sub><i>j</i></sub> ↑ ∞ ⇒ supp <i>χ</i>(<i>a</i><sub><i>j</i></sub><i>q</i>) ↓ {<i>q</i> = 0}</span></span><span class="eqn">(9.21)</span></div>
+          <div class="fx-row"><span><span class="q"><i>χ</i><sub><i>x</i></sub> ∈ <i>C</i><span class="ss"><sup>∞</sup><sub><i>c</i></sub></span>(ℝ<sup>3</sup>),</span> <span class="q"><i>χ</i><sub><i>x</i></sub> ≡ 1 on {<i>r</i> ≤ <i>r</i><sub>0</sub>/2, |<i>z</i>| ≤ <i>z</i><sub>0</sub>/2},</span> <span class="q"><i>χ</i><sub><i>t</i></sub> ≡ 1 on [1 − <i>τ</i><sub>0</sub>/2, 1)</span></span><span class="eqn">(10.4)</span></div>
+          <div class="fx-row"><span><span class="q"><i>f</i> := ℛ(<i>u</i>, <i>p</i>) = ∂<sub><i>t</i></sub><i>u</i> + (<i>u</i>·∇)<i>u</i> − Δ<i>u</i> + ∇<i>p</i>,</span> <span class="q">0 ≤ <i>t</i> &lt; 1</span></span><span class="eqn">(10.5)</span></div>
+          <div class="fx-row"><span><span class="q"><i>f</i> ∈ <i>C</i><span class="ss"><sup>∞</sup><sub><i>c</i></sub></span>(ℝ<sup>3</sup> × (0, ∞)),</span> <span class="q">supp <i>f</i> ⊂ 𝒦 × [0, 2]</span></span><span class="eqn">Lemma 10.3</span></div>
+          <div class="fx-row"><span><span class="q">(<i>u</i><sub><i>ν</i></sub>, <i>p</i><sub><i>ν</i></sub>, <i>f</i><sub><i>ν</i></sub>)(<i>x</i>, <i>t</i>) = (√<i>ν</i> <i>u</i>, <i>ν</i><i>p</i>, √<i>ν</i> <i>f</i>)(<i>x</i>/√<i>ν</i>, <i>t</i>),</span> <span class="q">∀<i>ν</i> &gt; 0</span></span><span class="eqn">(10.22)</span></div>
+        </div>
+      </li>
+      <li class="layer">
+        <p class="layer-k">Layer 1 · Collapsing coordinates</p>
+        <div class="fx">
+          <div class="fx-row"><span><span class="q"><i>τ</i> = 1 − <i>t</i>,</span> <span class="q"><i>A</i> = ½ + <i>h</i>,</span> <span class="q"><i>D</i> = ½ − <i>h</i>,</span> <span class="q">0 &lt; <i>h</i> &lt; 1/100</span></span><span class="eqn">(4.1)</span></div>
+          <div class="fx-row"><span><span class="q"><i>z</i> = <i>q</i><sup><i>D</i></sup><i>η</i>,</span> <span class="q"><i>τ</i> = <i>q</i>(1 − <i>η</i><sup>2</sup>),</span> <span class="q"><i>X</i> = <i>r</i><sup>2</sup>/(2<i>q</i>),</span> <span class="q">|<i>η</i>| &lt; 1</span></span><span class="eqn">(3.2)</span></div>
+          <div class="fx-row"><span><span class="q"><i>q</i> = <i>q</i>(<i>z</i>, <i>τ</i>) &gt; 0,</span> <span class="q"><i>q</i> ≍ <i>τ</i> + |<i>z</i>|<sup>1/<i>D</i></sup></span></span><span class="eqn">(3.2)</span></div>
+          <div class="fx-row"><span><span class="q qj"><i>q</i> ↓ 0, <i>X</i> ≤ <i>X</i><sub>1</sub> &lt; ∞</span> <span class="q">⇒ (<i>x</i>, <i>t</i>) → (0, 1)</span></span><span class="eqn">§3.1</span></div>
+        </div>
+      </li>
+      <li class="layer">
+        <p class="layer-k">Layer 2 · Leading whirlpool</p>
+        <div class="fx">
+          <div class="fx-row"><span><span class="q"><i>u</i><span class="ss"><sup>(0)</sup><sub>θ</sub></span> = <i>q</i><sup>−<i>A</i></sup><i>E</i>,</span> <span class="q"><i>u</i><span class="ss"><sup>(0)</sup><sub><i>z</i></sub></span> = <i>q</i><sup>−<i>A</i></sup><i>U</i>,</span> <span class="q"><i>r</i><i>u</i><span class="ss"><sup>(0)</sup><sub><i>r</i></sub></span> = <i>V</i><sub>0</sub>,</span> <span class="q"><i>p</i><sup>(0)</sup> = <i>q</i><sup>−2<i>A</i></sup>Π</span></span><span class="eqn">(4.3)</span></div>
+          <div class="fx-row"><span><span class="q"><i>E</i> = C<sup>−1</sup>√(2<i>X</i>) <i>φ</i>,</span> <span class="q">C &gt; 1</span></span><span class="eqn">(4.3)</span></div>
+          <div class="fx-row"><span><span class="q">∇·<i>u</i><sup>(0)</sup> = 0,</span> <span class="q qj"><i>V</i><sub>0</sub>(0, <i>η</i>) = 0</span> <span class="q">⇒ <i>V</i><sub>0</sub> = (<i>X</i>/<i>L</i>)(2<i>ηU</i> − 2<i>Dη</i>𝒜<sub><i>X</i></sub>(<i>U</i>) − <i>d</i>∂<sub><i>η</i></sub>𝒜<sub><i>X</i></sub>(<i>U</i>))</span></span><span class="eqn">(4.7)</span></div>
+          <div class="fx-row"><span><span class="q qj">∂<sub><i>r</i></sub><i>p</i><sup>(0)</sup> = (<i>u</i><span class="ss"><sup>(0)</sup><sub>θ</sub></span>)<sup>2</sup>/<i>r</i></span> <span class="q">⇒ Π(<i>X</i>, <i>η</i>) = −∫<span class="ss"><sup>∞</sup><sub><i>X</i></sub></span> <i>E</i>(<i>x</i>, <i>η</i>)<sup>2</sup>/(2<i>x</i>) d<i>x</i></span></span><span class="eqn">(4.25)</span></div>
+          <div class="fx-row"><span><span class="q">𝒜<sub><i>X</i></sub>(<i>U</i>) := <i>X</i><sup>−1</sup>∫<span class="ss"><sup><i>X</i></sup><sub>0</sub></span><i>U</i> d<i>x</i>,</span> <span class="q"><i>d</i> := 1 − <i>η</i><sup>2</sup>,</span> <span class="q"><i>L</i> := 1 − 2<i>hη</i><sup>2</sup></span></span><span class="eqn">(4.1), (4.6)</span></div>
+        </div>
+      </li>
+      <li class="layer">
+        <p class="layer-k">Layer 3 · The profiles E and U</p>
+        <div class="fx">
+          <div class="fx-row"><span><span class="q">∃ <i>h</i> ∈ (0, 1/100), <i>λ</i> &gt; 0, C &gt; 1,</span> <span class="q">0 &lt; <i>X</i><sub><i>a</i></sub> &lt; <i>X</i><sub><i>b</i></sub>, <i>c</i><sub>∞</sub> &gt; 0,</span> <span class="q">(<i>E</i>, <i>U</i>, Π)</span> <span class="q tx">no numerical values given</span></span><span class="eqn">Thm 4.6</span></div>
+        </div>
+        <ul class="zones">
+          <li class="zone"><span class="sw sw-core" aria-hidden="true"></span><div class="zone-body">
+            <p><strong>Core</strong> <span class="m"><i>X</i> ≤ <i>X</i><sub><i>a</i></sub></span>: <span class="m">𝒯<sub>0</sub> = 0</span></p>
+            <div class="fx">
+              <div class="fx-row"><span><span class="q">−2<i>L</i>(<i>Xφ</i><sub><i>XX</i></sub> + 2<i>φ</i><sub><i>X</i></sub>)/<i>φ</i> = <i>S</i><sub><i>q</i></sub>,</span> <span class="q">−2<i>L</i>(<i>XU</i><sub><i>XX</i></sub> + <i>U</i><sub><i>X</i></sub>) = <i>S</i><sub><i>n</i></sub></span></span><span class="eqn">(4.13)</span></div>
+            </div>
+          </div></li>
+          <li class="zone"><span class="sw sw-ring" aria-hidden="true"></span><div class="zone-body">
+            <p><strong>Ring</strong> <span class="m"><i>X</i><sub><i>a</i></sub> &lt; <i>X</i> &lt; <i>X</i><sub><i>b</i></sub></span>: <span class="m">𝒯<sub>0</sub> ≠ 0</span>, where the ripples act</p>
+            <div class="fx">
+              <div class="fx-row"><span><span class="q"><i>n</i> := 𝒯<sub>0</sub>/|𝒯<sub>0</sub>|:</span> <span class="q"><i>n</i><sub>θ</sub> + <i>t</i><sub><i>s</i></sub><i>n</i><sub><i>z</i></sub> ≥ <i>κ</i>,</span> <span class="q">(<i>v</i><sub><i>s</i></sub> − 2)(<i>n</i><sub><i>z</i></sub> − <i>t</i><sub><i>s</i></sub><i>n</i><sub>θ</sub>)<sup>2</sup> ≤ (2 − <i>κ</i>)(<i>n</i><sub>θ</sub> + <i>t</i><sub><i>s</i></sub><i>n</i><sub><i>z</i></sub>)<sup>2</sup>,</span> <span class="q"><i>κ</i> ∈ (0, 2)</span></span><span class="eqn">(4.26)</span></div>
+              <div class="fx-row"><span><span class="q"><span class="tx">radial oscillation: phase</span> <i>N</i> log <i>X</i>,</span> <span class="q"><span class="tx">amplitude</span> <i>O</i>(<i>N</i><sup>−1</sup>),</span> <span class="q"><i>N</i> ≫ 1</span></span><span class="eqn">Prop. C.2</span></div>
+            </div>
+          </div></li>
+          <li class="zone"><span class="sw sw-calm" aria-hidden="true"></span><div class="zone-body">
+            <p><strong>Outside</strong> <span class="m"><i>X</i> ≥ <i>X</i><sub><i>b</i></sub></span>: <span class="m">ℛ(<i>u</i><sup>(0)</sup>, <i>p</i><sup>(0)</sup>) ≡ 0</span></p>
+            <div class="fx">
+              <div class="fx-row"><span><span class="q"><i>U</i> = <i>V</i><sub>0</sub> = 0,</span> <span class="q"><i>E</i> = <i>c</i><sub>∞</sub><i>X</i><sup>−<i>A</i></sup>ℋ(2<i>d</i>/<i>X</i>)</span></span><span class="eqn">(4.29)</span></div>
+              <div class="fx-row"><span><span class="q">ℋ(<i>Z</i>) = Γ(1 + <i>h</i>)<sup>−1</sup> ∫<span class="ss"><sup>∞</sup><sub>0</sub></span> <i>e</i><sup>−<i>v</i></sup><i>v</i><sup><i>h</i></sup>(1 + <i>Zv</i>)<sup>−<i>h</i></sup> d<i>v</i></span></span><span class="eqn">(4.29)</span></div>
+              <div class="fx-row"><span><span class="q"><i>u</i><sub>θ</sub> = <i>c</i><sub>∞</sub><i>s</i><sup>−<i>A</i></sup>ℋ(2<i>τ</i>/<i>s</i>),</span> <span class="q"><i>s</i> = <i>r</i><sup>2</sup>/2</span></span><span class="eqn">(4.29)</span></div>
+              <div class="fx-row"><span><span class="q">∂<sub><i>t</i></sub><i>u</i><sub>θ</sub> = ∂<span class="ss"><sup>2</sup><sub><i>r</i></sub></span><i>u</i><sub>θ</sub> + <i>r</i><sup>−1</sup>∂<sub><i>r</i></sub><i>u</i><sub>θ</sub> − <i>r</i><sup>−2</sup><i>u</i><sub>θ</sub></span></span><span class="eqn">(3.5)</span></div>
+            </div>
+          </div></li>
+        </ul>
+      </li>
+      <li class="layer">
+        <p class="layer-k">Layer 4 · Background corrections</p>
+        <div class="fx">
+          <div class="fx-row"><span><span class="q"><i>u</i><sub>θ,<i>n</i></sub> = <i>q</i><sup>−<i>A</i>+<i>λ</i><sub><i>n</i></sub></sup><i>E</i><sub><i>n</i></sub>,</span> <span class="q"><i>u</i><sub><i>z</i>,<i>n</i></sub> = <i>q</i><sup>−<i>A</i>+<i>λ</i><sub><i>n</i></sub></sup><i>U</i><sub><i>n</i></sub>,</span> <span class="q"><i>λ</i><sub><i>n</i></sub> = 2<i>nh</i></span></span><span class="eqn">(5.1)</span></div>
+          <div class="fx-row"><span><span class="q"><i>r</i><i>u</i><sub><i>r</i>,<i>n</i></sub> = <i>q</i><sup><i>λ</i><sub><i>n</i></sub></sup><i>V</i><sub><i>n</i></sub>,</span> <span class="q"><i>p</i><sub><i>n</i></sub> = <i>q</i><sup>−2<i>A</i>+<i>λ</i><sub><i>n</i></sub></sup>Π<sub><i>n</i></sub></span></span><span class="eqn">(5.1)–(5.6)</span></div>
+          <div class="fx-row"><span><span class="q">Σ<sub><i>n</i>≥0</sub> <i>u</i><sub><i>n</i></sub> <span class="tx">(formal)</span> ⇝ <i>u</i><sub><i>B</i></sub> <span class="tx">via cutoffs</span> <i>χ</i>(<i>c</i><sub><i>n</i></sub><i>q</i>)</span></span><span class="eqn">Lemma 5.4</span></div>
+          <div class="fx-row"><span><span class="q qj">ℛ(<i>u</i><sub><i>B</i></sub>, <i>p</i><sub><i>B</i></sub>) = −(∂<sub><i>r</i></sub> + 2/<i>r</i>)𝒯<sub>phys,θ</sub><i>e</i><sub>θ</sub></span> <span class="q">− (∂<sub><i>r</i></sub> + 1/<i>r</i>)𝒯<sub>phys,<i>z</i></sub><i>e</i><sub><i>z</i></sub> + ℰ<sub><i>B</i></sub></span></span><span class="eqn">(5.41)</span></div>
+          <div class="fx-row"><span><span class="q">supp 𝒯<sub>phys</sub> ⊂ {<i>X</i><sub><i>a</i></sub> ≤ <i>X</i> ≤ <i>X</i><sub><i>b</i></sub>},</span> <span class="q">|∂<sup><i>α</i></sup>ℰ<sub><i>B</i></sub>| ≤ <i>C</i><sub><i>α</i>,<i>M</i></sub><i>q</i><sup><i>M</i></sup> ∀<i>α</i>, <i>M</i></span></span><span class="eqn">(5.41)</span></div>
+        </div>
+      </li>
+      <li class="layer">
+        <p class="layer-k">Layer 5 · Ripples</p>
+        <div class="fx">
+          <div class="fx-row"><span><span class="q"><i>w</i> = ∇×𝒜<sub>wave</sub> ⇒ ∇·<i>w</i> = 0</span></span><span class="eqn">Lemma 7.7</span></div>
+          <div class="fx-row"><span><span class="q">𝒜<sub><i>m</i></sub> = <i>C</i><sub><i>m</i></sub><i>e</i><sup>i<i>km</i>Φ</sup>,</span> <span class="q"><i>C</i><sub><i>m</i></sub> = i<i>n</i><sub>Φ</sub> × <i>t</i><sub><i>m</i></sub>/(<i>km</i>|<i>n</i><sub>Φ</sub>|<sup>2</sup>)</span></span><span class="eqn">(7.38)</span></div>
+          <div class="fx-row"><span><span class="q"><i>w</i> ≈ <i>a</i> cos(<i>ξ</i>·<i>x</i> + <i>φ</i>),</span> <span class="q"><i>a</i>·<i>ξ</i> = 0,</span> <span class="q"><i>A</i><sub>wave</sub> ≍ <i>q</i><sup>−1/2−<i>h</i>/2</sup>,</span> <span class="q"><i>ℓ</i><sub>wave</sub> ≍ <i>q</i><sup>1/2+<i>h</i>/2</sup></span></span><span class="eqn">§3.3</span></div>
+          <div class="fx-row"><span><span class="q"><i>T</i> = <i>c</i><sub>1</sub><i>v</i><sub>1</sub> + <i>c</i><sub>2</sub><i>v</i><sub>2</sub>,</span> <span class="q"><i>c</i><sub>1</sub>, <i>c</i><sub>2</sub> &gt; 0</span></span><span class="eqn">§3.2</span></div>
+          <div class="fx-row"><span><span class="q">(⟨<i>w̃</i><sub><i>r</i></sub><i>w̃</i><sub>θ</sub>⟩, ⟨<i>w̃</i><sub><i>r</i></sub><i>w̃</i><sub><i>z</i></sub>⟩) = <i>T</i> + h.o.t.,</span> <span class="q">⟨·⟩ := ⟨⟨·⟩<sub>θ</sub>⟩<sub><i>Y</i></sub></span></span><span class="eqn">Prop. 7.5, (3.8)</span></div>
+          <div class="fx-row"><span><span class="q qj">ℛ(<i>u</i><sub><i>B</i></sub> + <i>w</i>, <i>p</i><sub><i>B</i></sub> + <i>π</i>) = ℛ(<i>u</i><sub><i>B</i></sub>, <i>p</i><sub><i>B</i></sub>)</span> <span class="q">+ ℒ<sub><i>u</i><sub><i>B</i></sub></sub>(<i>w</i>, <i>π</i>) + ∇·(<i>w</i> ⊗ <i>w</i>)</span></span><span class="eqn">§3.3</span></div>
+          <div class="fx-row"><span><span class="q">ℒ<sub><i>v</i></sub>(<i>w</i>, <i>π</i>) := ∂<sub><i>t</i></sub><i>w</i> + (<i>v</i>·∇)<i>w</i> + (<i>w</i>·∇)<i>v</i> − Δ<i>w</i> + ∇<i>π</i></span></span><span class="eqn">§3.3</span></div>
+        </div>
+      </li>
+      <li class="layer">
+        <p class="layer-k">Layer 6 · Correction cycles</p>
+        <div class="fx">
+          <div class="fx-row"><span><span class="q"><i>u</i><sup>[<i>j</i>+1]</sup> = <i>u</i><sup>[<i>j</i>]</sup> + <i>δu</i><sub><i>j</i></sub>,</span> <span class="q"><i>p</i><sup>[<i>j</i>+1]</sup> = <i>p</i><sup>[<i>j</i>]</sup> + <i>δp</i><sub><i>j</i></sub></span></span><span class="eqn">§3.4</span></div>
+          <div class="fx-row"><span><span class="q qj">ℛ(<i>u</i><sup>[<i>j</i>+1]</sup>, <i>p</i><sup>[<i>j</i>+1]</sup>) = ℛ(<i>u</i><sup>[<i>j</i>]</sup>, <i>p</i><sup>[<i>j</i>]</sup>)</span> <span class="q">+ ℒ<sub><i>u</i><sup>[<i>j</i>]</sup></sub>(<i>δu</i><sub><i>j</i></sub>, <i>δp</i><sub><i>j</i></sub>) + ∇·(<i>δu</i><sub><i>j</i></sub> ⊗ <i>δu</i><sub><i>j</i></sub>)</span></span><span class="eqn">§3.4</span></div>
+          <div class="fx-row"><span><span class="q"><i>σ</i><sub><i>j</i></sub> = 1/5 + <i>j</i>/10 → ∞</span></span><span class="eqn">(9.8)</span></div>
+          <div class="fx-row"><span><span class="q">|∂<span class="ss"><sup><i>α</i></sup><sub><i>x</i></sub></span>∂<span class="ss"><sup><i>b</i></sup><sub><i>t</i></sub></span>ℛ(<i>u</i><sub>loc</sub>, <i>p</i><sub>loc</sub>)| ≤ <i>C</i><sub><i>α</i>,<i>b</i>,<i>N</i>,<i>X</i><sub>1</sub></sub><i>q</i><sup><i>N</i></sup>,</span> <span class="q">0 ≤ <i>X</i> ≤ <i>X</i><sub>1</sub>,</span> <span class="q">∀<i>N</i></span></span><span class="eqn">(3.4)</span></div>
+        </div>
+      </li>
+      <li class="layer">
+        <p class="layer-k">What blows up</p>
+        <div class="fx">
+          <div class="fx-row"><span><span class="q"><i>u</i><sub>θ</sub>(√(2<i>X</i><sub>in</sub><i>τ</i>), 0, 0, 1 − <i>τ</i>) = <i>τ</i><sup>−<i>A</i></sup>(<i>e</i><sub>0</sub> + <i>O</i>(<i>τ</i><sup>2<i>h</i></sup>)) → ∞</span></span><span class="eqn">(3.6)</span></div>
+          <div class="fx-row"><span><span class="q"><i>e</i><sub>0</sub> = <i>E</i>(<i>X</i><sub>in</sub>, 0) &gt; 0,</span> <span class="q"><i>X</i><sub>in</sub> ∈ (0, <i>X</i><sub><i>a</i></sub>),</span> <span class="q"><i>τ</i><sup>−<i>A</i></sup> = <i>τ</i><sup>−1/2−<i>h</i></sup></span></span><span class="eqn">(3.6)</span></div>
+          <div class="fx-row"><span><span class="q"><i>τ</i> ↓ 0 ⇒ (<i>r</i>, <i>z</i>) = (√(2<i>X</i><sub>in</sub><i>τ</i>), 0) → (0, 0)</span></span><span class="eqn">(10.20)</span></div>
+        </div>
+      </li>
+    </ol>
+    <div class="claim">
+      <p class="claim-k">The counterexample itself</p>
+      <div class="fx">
+        <div class="fx-row"><span><span class="q"><i>u</i><sub>0</sub> = 0,</span> <span class="q"><i>f</i> = ℛ(<i>u</i>, <i>p</i>) ∈ <i>C</i><span class="ss"><sup>∞</sup><sub><i>c</i></sub></span>(ℝ<sup>3</sup> × (0, ∞))</span></span><span class="eqn">Thm 1.1</span></div>
+        <div class="fx-row"><span><span class="q qj">∄ (<i>v</i>, <i>P</i>) ∈ <i>C</i><sup>∞</sup>(ℝ<sup>3</sup> × [0, ∞))</span> <span class="q"><span class="tx">solving</span> (1.1) <span class="tx">with</span> (<i>u</i><sub>0</sub>, <i>f</i>),</span> <span class="q">sup<sub><i>t</i>≥0</sub> ‖<i>v</i>(<i>t</i>)‖<sub><i>L</i><sup>2</sup></sub> &lt; ∞</span></span><span class="eqn">Thm 1.1</span></div>
+        <div class="fx-row"><span><span class="q">⇒ <span class="tx">Fefferman</span> (C) <span class="tx">on</span> ℝ<sup>3</sup>,</span> <span class="q">(D) <span class="tx">on</span> 𝕋<sup>3</sup></span></span><span class="eqn">Cor. 10.6</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="read" aria-labelledby="h-energy">
+    <h2 id="h-energy">Why the energy stays finite</h2>
+    <p>The core speeds up, but its volume shrinks faster than its speed squared grows.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th scope="col">Core</th><th scope="col">Scales like</th><th scope="col">As <span class="m"><i>τ</i></span> → 0</th></tr></thead>
+        <tbody>
+          <tr><td>Width</td><td class="f"><span class="m"><i>τ</i><sup>1/2</sup></span></td><td>→ 0</td></tr>
+          <tr><td>Height</td><td class="f"><span class="m"><i>τ</i><sup>1/2−<i>h</i></sup></span></td><td>→ 0</td></tr>
+          <tr><td>Top speed</td><td class="f"><span class="m"><i>τ</i><sup>−1/2−<i>h</i></sup></span></td><td class="up">→ ∞</td></tr>
+          <tr><td>Volume</td><td class="f"><span class="m"><i>τ</i><sup>3/2−<i>h</i></sup></span></td><td>→ 0</td></tr>
+          <tr><td>Energy</td><td class="f"><span class="m"><i>τ</i><sup>1/2−3<i>h</i></sup></span></td><td>→ 0</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="calc">Energy ≈ volume × speed² = <span class="m"><i>τ</i><sup>3/2−<i>h</i></sup> · <i>τ</i><sup>−1−2<i>h</i></sup> = <i>τ</i><sup>1/2−3<i>h</i></sup></span>, which goes to 0.</p>
+    <p class="small"><span class="m"><i>τ</i> = 1 − <i>t</i></span>, <span class="m">0 &lt; <i>h</i> &lt; 1/100</span>, <span class="m"><i>ℓ</i><sub><i>r</i></sub>/<i>ℓ</i><sub><i>z</i></sub> ≍ <i>τ</i><sup><i>h</i></sup> → 0</span> (a thin column). Whole flow: <span class="m">‖<i>u</i>(<i>t</i>)‖<span class="ss"><sup>2</sup><sub>2</sub></span> + 2∫<span class="ss"><sup><i>t</i></sup><sub>0</sub></span>‖∇<i>u</i>‖<span class="ss"><sup>2</sup><sub>2</sub></span> d<i>s</i> ≤ ℱ(<i>t</i>)<sup>2</sup></span>, <span class="m">ℱ(<i>t</i>) = ∫<span class="ss"><sup><i>t</i></sup><sub>0</sub></span>‖<i>f</i>(<i>s</i>)‖<sub>2</sub> d<i>s</i> &lt; ∞</span> (Lemma 10.4).</p>
+  </section>
+
+  <section class="read" aria-labelledby="h-means">
+    <h2 id="h-means">What it would and would not show</h2>
+    <div class="means">
+      <div class="mcol">
+        <h3>If the proof holds</h3>
+        <ul>
+          <li>A smooth, local, short-lived push can drive a 3D viscous fluid from rest to infinite speed in finite time, with finite energy.</li>
+          <li>This works for every viscosity, both in all of space and in a periodic box.</li>
+          <li>Clay’s official problem statement lists four acceptable answers: two smoothness theorems (A, B) and two breakdown examples (C, D). The paper claims (C), and (D) for the box.</li>
+        </ul>
+      </div>
+      <div class="mcol">
+        <h3>What it does not show</h3>
+        <ul>
+          <li>Whether a fluid with no outside push can blow up by itself. The paper does not address that case.</li>
+          <li>Anything about natural forces. The push is custom-built for this one flow.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="read" aria-labelledby="h-src">
+    <h2 id="h-src">Sources</h2>
+    <ul class="sources">
+      <li><a href="https://cdn.openai.com/pdf/32d9f210-8b73-45e0-91bc-82a30aef8a9a/navier-stokes.pdf">OpenAI, Finite time blowup for Navier–Stokes (PDF, 166 pages)</a></li>
+      <li><a href="https://openai.com/index/navier-stokes-solution/">OpenAI, On the Navier–Stokes Millennium Prize Problem (announcement)</a></li>
+      <li><a href="https://www.claymath.org/wp-content/uploads/2022/06/navierstokes.pdf">C. Fefferman, official Clay problem statement (PDF)</a></li>
+      <li><a href="https://en.wikipedia.org/wiki/Navier%E2%80%93Stokes_priority_controversy">Wikipedia, Navier–Stokes priority controversy</a></li>
+      <li><a href="https://www.tuftsdaily.com/article/2026/09/mathematicians-still-checking-the-navier-stokes-proof-that-openai-claims-to-have-solved">The Tufts Daily, Mathematicians still checking the Navier–Stokes proof</a></li>
+    </ul>
+  </section>
+</main>
+
+<footer class="foot">
+  <p>Independent explainer, not affiliated with OpenAI. Figures are schematics drawn from the paper’s scaling laws, not simulations.</p>
+</footer>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var slider = $('tleft'), sys = $('sys'), spin = $('spin'), core = $('core'), hot = $('hot'), rip = $('ripples'), calm = $('calm-arcs');
+  var outT = $('tl'), oSize = $('o-size'), oSpeed = $('o-speed'), oEn = $('o-energy'), oPush = $('o-push'), pill = $('push-pill'), pushSub = $('push-sub');
+  var tog = $('ripple-toggle'), note = $('toggle-note'), play = $('play');
+  var swRing = $('sw-ring'), ringName = $('ring-name'), ringDesc = $('ring-desc');
+  var H = 0.005, DUR = 6500;
+  var mq = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
+  var omega = 30, angle = 0, calmAngle = 0, last = null, playing = false, playT0 = 0, playV0 = 0;
+
+  var wavy = $('wavy');
+  if (wavy) {
+    var d = '';
+    for (var i = 0; i <= 120; i++) {
+      var a = i / 120 * Math.PI * 2, r = 17 + 2.6 * Math.sin(12 * a);
+      d += (i ? 'L' : 'M') + (28 + r * Math.cos(a)).toFixed(2) + ' ' + (28 + r * Math.sin(a)).toFixed(2);
+    }
+    wavy.setAttribute('d', d + 'Z');
+  }
+
+  function pct(x) { var p = x * 100; return (p >= 10 ? p.toFixed(0) : p >= 1 ? p.toFixed(1) : p.toFixed(2)) + '%'; }
+  function times(x) { return (x < 10 ? x.toFixed(1) : Math.round(x).toLocaleString('en-US', { maximumSignificantDigits: 3 })) + '×'; }
+
+  function render() {
+    var v = +slider.value, end = v >= 100, tau = end ? 0 : Math.pow(10, -3 * v / 100), on = tog.checked;
+    var s = end ? 0.035 : Math.max(Math.sqrt(tau), 0.05);
+    sys.setAttribute('transform', 'scale(' + s.toFixed(4) + ')');
+    core.style.fillOpacity = (0.16 + 0.4 * v / 100).toFixed(2);
+    hot.style.strokeOpacity = (0.25 + 0.6 * v / 100).toFixed(2);
+    omega = end ? 1080 : Math.min(30 / tau, 1080);
+    rip.classList.toggle('off', !on);
+    hot.classList.toggle('off', on);
+    outT.textContent = end ? 'Blow-up (t = 1)' : 'Time left: ' + pct(tau);
+    oSize.textContent = end ? '→ 0' : pct(Math.sqrt(tau));
+    oSpeed.textContent = end ? '→ ∞' : times(Math.pow(tau, -0.5 - H));
+    oEn.textContent = end ? '→ 0' : pct(Math.pow(tau, 0.5 - 3 * H));
+    if (on) {
+      oPush.textContent = 'Bounded'; pill.textContent = 'smooth'; pill.className = 'pill ok';
+    } else {
+      oPush.textContent = end ? '→ ∞' : times(Math.pow(tau, -1.5 - H)); pill.textContent = 'blows up'; pill.className = 'pill bad';
+    }
+    slider.setAttribute('aria-valuetext', outT.textContent);
+  }
+
+  function setRipples() {
+    var on = tog.checked;
+    swRing.className = 'sw ' + (on ? 'sw-ring' : 'sw-hot');
+    ringName.textContent = on ? 'Ripple ring' : 'Ring without ripples';
+    ringDesc.textContent = on ? 'Its ripples carry the momentum the core needs' : 'Needs an outside push that grows without limit';
+    note.textContent = on
+      ? 'Ripples on: they supply the missing push from inside the fluid, so the outside push stays smooth.'
+      : 'Ripples off: the bare whirlpool needs a push in the ring that grows without limit.';
+    pushSub.innerHTML = on ? '<span class="m"><i>f</i> ∈ <i>C</i><span class=\"ss\"><sup>∞</sup><sub><i>c</i></sub></span></span>' : '<span class="m">∝ <i>τ</i><sup>−3/2−<i>h</i></sup></span>';
+    render();
+  }
+
+  function setPlaying(p) {
+    playing = p;
+    play.textContent = p ? 'Pause' : (+slider.value >= 100 ? 'Play again' : 'Play the collapse');
+    play.setAttribute('aria-pressed', p ? 'true' : 'false');
+  }
+
+  play.addEventListener('click', function () {
+    if (playing) { setPlaying(false); return; }
+    if (+slider.value >= 100) slider.value = 0;
+    playV0 = +slider.value;
+    playT0 = performance.now();
+    setPlaying(true);
+    render();
+  });
+  slider.addEventListener('input', function () { setPlaying(false); render(); });
+  tog.addEventListener('change', setRipples);
+
+  function frame(now) {
+    if (last !== null) {
+      var dt = Math.min((now - last) / 1000, 0.1);
+      if (playing) {
+        var v = Math.min(playV0 + (now - playT0) / DUR * 100, 100);
+        slider.value = v;
+        render();
+        if (v >= 100) setPlaying(false);
+      }
+      if (!mq.matches) {
+        angle = (angle + omega * dt) % 360;
+        spin.setAttribute('transform', 'rotate(' + angle.toFixed(1) + ')');
+        calmAngle = (calmAngle + 9 * dt) % 360;
+        calm.setAttribute('transform', 'translate(160 160) rotate(' + calmAngle.toFixed(1) + ')');
+      }
+    }
+    last = now;
+    requestAnimationFrame(frame);
+  }
+
+  setRipples();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
